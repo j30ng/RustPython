@@ -221,6 +221,51 @@ impl<O: OutputStream> Compiler<O> {
         for (i, statement) in program.statements.iter().enumerate() {
             let is_last = i == program.statements.len() - 1;
 
+            let a: &ast::Statement = &statement;
+            let debug_str: String = format!("{:?}", a);
+
+            let mut depth = 0;
+            let mut first_in_line = true;
+            let mut result_string = String::new();
+            for c in debug_str.chars() {
+                if c == ' ' && first_in_line {
+                    continue;
+                };
+                let new_depth = match c {
+                    '[' | '{' => depth + 1,
+                    ']' | '}' => depth - 1,
+                    _ => depth
+                };
+
+                if first_in_line {
+                    for i in 0..new_depth {
+                        result_string.push_str("  ");
+                    };
+                }
+                if new_depth > depth {
+                    result_string.push(c);
+                    result_string.push('\n');
+                    first_in_line = true;
+                } else if new_depth < depth {
+                    result_string.push('\n');
+                    for i in 0..new_depth {
+                        result_string.push_str("  ");
+                    };
+                    result_string.push(c);
+                    first_in_line = false;
+                } else {
+                    result_string.push(c);
+                    first_in_line = if c == ',' {
+                        result_string.push('\n');
+                        true
+                    } else {
+                        false
+                    }
+                };
+                depth = new_depth;
+            };
+            println!("{}", result_string);
+
             if let ast::StatementType::Expression { ref expression } = statement.node {
                 self.compile_expression(expression)?;
 
@@ -1617,6 +1662,7 @@ impl<O: OutputStream> Compiler<O> {
                 self.compile_comprehension(kind, generators)?;
             }
             Starred { value } => {
+                println!("Hello world");
                 self.compile_expression(value)?;
                 self.emit(Instruction::Unpack);
                 panic!("We should not just unpack a starred args, since the size is unknown.");
